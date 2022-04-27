@@ -4,6 +4,7 @@ namespace MonologDatadog\Handler;
 
 use Monolog\Logger;
 use Monolog\Handler\AbstractProcessingHandler;
+use Monolog\Formatter\FormatterInterface;
 
 use Exception;
 
@@ -67,7 +68,7 @@ class DatadogHandler extends AbstractProcessingHandler
     /**
      * Handles a log record
      */
-    protected function write(array $record)
+    protected function write(array $record): void
     {
         $this->send($record['formatted']);
     }
@@ -147,7 +148,7 @@ class DatadogHandler extends AbstractProcessingHandler
      *
      * @return JsonFormatter
      */
-    protected function getDefaultFormatter()
+    protected function getDefaultFormatter(): FormatterInterface
     {
         return new JsonFormatter();
     }
