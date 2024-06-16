@@ -44,6 +44,13 @@ class DatadogHandler extends AbstractProcessingHandler
     private $attributes;
 
     /**
+     * Compress data sended to Datadog
+     *
+     * @var bool
+     */
+    private $compress = true;
+
+    /**
      * @param string     $apiKey     Datadog Api Key access
      * @param array      $attributes Some options fore Datadog Logs
      * @param string|int $level      The minimum logging level at which this handler will be triggered
@@ -53,7 +60,8 @@ class DatadogHandler extends AbstractProcessingHandler
         string $apiKey,
         array $attributes = [],
         $level = Logger::DEBUG,
-        bool $bubble = true
+        bool $bubble = true,
+        bool $compress = true
     ) {
         if (!extension_loaded('curl')) {
             throw new MissingExtensionException('The curl extension is needed to use the DatadogHandler');
@@ -62,6 +70,15 @@ class DatadogHandler extends AbstractProcessingHandler
         parent::__construct($level, $bubble);
 
         $this->apiKey = $this->getApiKey($apiKey);
+        $this->attributes = $attributes;
+        $this->compress = $compress;
+    }
+
+    /**
+     * @param array      $attributes Some options fore Datadog Logs
+     * @return void
+     */
+    public function setAttributes(array $attributes): void {
         $this->attributes = $attributes;
     }
 
@@ -80,6 +97,10 @@ class DatadogHandler extends AbstractProcessingHandler
     protected function send(string $record)
     {
         $headers = ['Content-Type:application/json'];
+
+        if ($this->compress) {
+            $headers[] = 'Content-Encoding:gzip';
+        }
 
         $source = $this->getSource();
         $hostname = $this->getHostname();
@@ -101,10 +122,15 @@ class DatadogHandler extends AbstractProcessingHandler
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $record);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+        if ($this->compress) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, gzencode($record, 9));
+        } else {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $record);
+        }
 
         Util::execute($ch);
     }
